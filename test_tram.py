@@ -213,7 +213,13 @@ def turnAround():
     Ab.stop()
     Ab.backward()
 
-  
+def detect_sign(grey):
+    global LSIGN
+    lefts= left_cascade.detectMultiScale(grey, 1.15, 7) 
+    return lefts
+
+    
+# Globals
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(Clock,GPIO.OUT)
@@ -221,6 +227,7 @@ GPIO.setup(Address,GPIO.OUT)
 GPIO.setup(CS,GPIO.OUT)
 GPIO.setup(DataOut,GPIO.IN,GPIO.PUD_UP)
 
+LSIGN = cv2.CascadeClassifier('Classifiers/Left_cascade_32.xml')
 
 maximum = 35;
 
@@ -288,27 +295,40 @@ if __name__ == '__main__':
       Ab.setPWMB(maximum);
       Ab.setPWMA(maximum - power_difference)
 
-    # Check for end of line
+#    # Check for end of line
+#    frame = cap.read()
+#    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+#    hsvMask = cv2.inRange(hsv, minHSV, maxHSV)
+#    result = cv2.bitwise_and(frame, frame, mask=hsvMask)
+#    cnts = cv2.findContours(hsvMask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+#    cnts = sorted(cnts, key = cv2.contourArea, reverse = True)[:1]
+#    for c in cnts:
+#                        area = cv2.contourArea(c)/100
+#                        
+#                        if area > 320:
+#                                print('area:', area)
+#                                cv2.drawContours(frame, [c], -1,(0,20,200), -1)
+#                                M = cv2.moments(c)
+#                                if (M['m00']!=0):
+#                                        
+#                                        turnAround()
+#                                        print('Resuming line follower')
+    # Check for end of line using classifiers
     frame = cap.read()
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    hsvMask = cv2.inRange(hsv, minHSV, maxHSV)
-    result = cv2.bitwise_and(frame, frame, mask=hsvMask)
-    cnts = cv2.findContours(hsvMask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
-    cnts = sorted(cnts, key = cv2.contourArea, reverse = True)[:1]
-    for c in cnts:
-                        area = cv2.contourArea(c)/100
-                        
-                        if area > 320:
-                                print('area:', area)
-                                cv2.drawContours(frame, [c], -1,(0,20,200), -1)
-                                M = cv2.moments(c)
-                                if (M['m00']!=0):
-                                        
-                                        turnAround()
-                                        print('Resuming line follower')
+    grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    lefts = detect_sign(grey)
+    for x,y,w,h in lefts:
+        cv2.rectangle(frame, (x,y), (x+w, y+h),(250,0,0), 2)
+        area = w*h
+        print(area)
+        if area > 300:
+            turnAround()
+            print('Resuming line follower')
+            
+    
                                         
         
-##    cv2.imshow('HSV', result)
+##    cv2.imshow('HSV', frame)
 ##    k = cv2.waitKey(1)
 ##    if k%256==27:
 ##      print('Break')
