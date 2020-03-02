@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 import RPi.GPIO as GPIO
 import time
-
+from numpy import loadtxt
 CS = 5
 Clock = 25
 Address = 24
@@ -113,7 +113,7 @@ class TRSensor(object):
         
       sensor_values[i] = value
     
-    print("readCalibrated",sensor_values)
+    #print("readCalibrated",sensor_values)
     return sensor_values
       
   """
@@ -227,9 +227,13 @@ maximum = 35;
 if __name__ == '__main__':
 
   from AlphaBot import AlphaBot
+  from hsv_tracker import hsv_trackbar
 
-  minHSV = (77,70,70)
-  maxHSV = (179,255,255)
+  minHSV = (112, 57, 26) #(30,7,70)
+  maxHSV = (175,100,185)
+  #[minHSV, maxHSV] = hsv_trackbar()
+  #[minHSV, maxHSV] = loadtxt('blue.out').astype(int)
+  print(minHSV, maxHSV)
   maximum = 35;
   integral = 0;
   last_proportional = 0
@@ -237,15 +241,15 @@ if __name__ == '__main__':
   TR = TRSensor()
   Ab = AlphaBot()
   Ab.stop()
-  cap = VideoCapture(0)
+  cap = VideoCapture(1)
   print("Tram Example")
   time.sleep(0.5)
-  for i in range(0,400):
+  for i in range(0,250):
     TR.calibrate()
     print (i)
   print(TR.calibratedMin)
   print(TR.calibratedMax)
-  time.sleep(0.5) 
+  time.sleep(1) 
   Ab.backward()
   while cap.cap.isOpened():
     position = TR.readLine(1)
@@ -276,7 +280,7 @@ if __name__ == '__main__':
       power_difference = maximum
     if (power_difference < - maximum):
       power_difference = - maximum
-    print(position,power_difference)
+    #print(position,power_difference)
     if (power_difference < 0):
       Ab.setPWMB(maximum + power_difference)
       Ab.setPWMA(maximum);
@@ -288,18 +292,27 @@ if __name__ == '__main__':
     frame = cap.read()
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     hsvMask = cv2.inRange(hsv, minHSV, maxHSV)
+    result = cv2.bitwise_and(frame, frame, mask=hsvMask)
     cnts = cv2.findContours(hsvMask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
-    cnts = sorted(cnts, key = cv2.contourArea, reverse = True)[:3]
+    cnts = sorted(cnts, key = cv2.contourArea, reverse = True)[:1]
     for c in cnts:
-                        area = cv2.contourArea(c)
-                        if area > 15000:
+                        area = cv2.contourArea(c)/100
+                        
+                        if area > 320:
+                                print('area:', area)
                                 cv2.drawContours(frame, [c], -1,(0,20,200), -1)
                                 M = cv2.moments(c)
                                 if (M['m00']!=0):
+                                        
                                         turnAround()
                                         print('Resuming line follower')
                                         
         
+##    cv2.imshow('HSV', result)
+##    k = cv2.waitKey(1)
+##    if k%256==27:
+##      print('Break')
+##      break
   cv2.destroyAllWindows()
   cap.cap.release()
 
